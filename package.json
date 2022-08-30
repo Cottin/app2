@@ -1,0 +1,53 @@
+{
+  "name": "comon",
+  "version": "1.0.4",
+  "description": "Things that are not specific enough for its own repo but common across our projects",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "mocha",
+    "link": "npm link popsiql shortstyle ramda-extras",
+    "unlink": "npm unlink popsiql shortstyle",
+    "clean": "rm -r node_modules"
+  },
+  "directories": {
+    "client": "./client",
+    "server": "./server"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/runtime": "^7.15.3",
+    "dayjs": "^1.10.6",
+    "fela": "^11.6.1",
+    "fela-preset-web": "^11.6.1",
+    "mocha": "^9.1.1",
+    "ramda": "^0.27.1",
+    "ramda-extras": "^0.4.20",
+    "react-fela": "^11.6.1"
+  },
+  "peerDependencies": {
+    "react": "17.0.2"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.15.4",
+    "@babel/register": "^7.15.3",
+    "coffeescript": "^2.5.1",
+    "testhelp": "^0.1.4"
+  },
+  "mocha": {
+    "extension": [
+      "coffee"
+    ],
+    "spec": "./{,!(node_modules)/**}/test__*.coffee",
+    "require": "mocha-register.js",
+    "slow": "1",
+    "watch": true,
+    "watch-files": [
+      "./**/*.coffee"
+    ],
+    "watch-ignore": [
+      "node_modules"
+    ]
+  }
+}
