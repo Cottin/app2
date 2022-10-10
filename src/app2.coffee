@@ -1,4 +1,4 @@
-all = require('ramda/src/all'); clone = require('ramda/src/clone'); difference = require('ramda/src/difference'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); identity = require('ramda/src/identity'); init = require('ramda/src/init'); invoker = require('ramda/src/invoker'); isEmpty = require('ramda/src/isEmpty'); isNil = require('ramda/src/isNil'); keys = require('ramda/src/keys'); length = require('ramda/src/length'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); nth = require('ramda/src/nth'); pickAll = require('ramda/src/pickAll'); prop = require('ramda/src/prop'); #auto_require: srcramda
+all = require('ramda/src/all'); clone = require('ramda/src/clone'); difference = require('ramda/src/difference'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); identity = require('ramda/src/identity'); init = require('ramda/src/init'); invoker = require('ramda/src/invoker'); isEmpty = require('ramda/src/isEmpty'); isNil = require('ramda/src/isNil'); keys = require('ramda/src/keys'); length = require('ramda/src/length'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); nth = require('ramda/src/nth'); pickAll = require('ramda/src/pickAll'); prop = require('ramda/src/prop'); test = require('ramda/src/test'); #auto_require: srcramda
 import {change, mapO, isAffected, diff, $, isThenable, sf0} from "ramda-extras" #auto_require: esramda-extras
 [] = [] #auto_sugar
 qq = (f) -> console.log match(/return (.*);/, f.toString())[1], f()
@@ -9,7 +9,10 @@ _ = (...xs) -> xs
 depsWithData = (deps, state) -> $ state, pickAll(keys(deps))
 
 queryStyle = 'color: #da635a; font-weight: 600;'
-selectorStyle = 'color: #b99236; font-weight: 600;'
+# selectorStyle = 'color: #b99236; font-weight: 600;'
+selectorStyle = 'color: #17a02d; font-weight: 600;'
+invokerStyle = 'color: #d185ce; font-weight: 600;'
+msStyle = 'color: #000000; font-weight: 500;'
 blackStyle = 'color: #000000; font-weight: 600;'
 
 consoleFormat = (xs) ->
@@ -20,7 +23,13 @@ consoleFormat = (xs) ->
 		styles.push style
 	return [strings, styles]
 
-toStyle = (isQ) -> isQ && queryStyle || selectorStyle
+toStyle = ({isQ, isS, isI}) ->
+	if isQ then queryStyle
+	else if isS then selectorStyle
+	else if isI then invokerStyle
+	else blackStyle
+
+trunc = (s, n = 100) -> if s.length > n then "#{s.substring 0, n-1}..." else s
 
 
 export class App
@@ -34,25 +43,31 @@ export class App
 			log: (o) =>
 				if o.type == 'run'
 					ini = if o.initial then 'INITIAL-' else ''
-					[dir, dirS] = $ o.affected, filter((x) -> !!x.dir), map(({k, isQ}) -> [k, toStyle isQ]), consoleFormat
-					[ind, indS] = $ o.affected, filter((x) -> !!x.ind), map(({k, isQ}) -> [k, toStyle isQ]), consoleFormat
-					[dat, datS] = $ o.affected, filter((x) -> !!x.data), map(({k, isQ}) -> [k, toStyle isQ]), consoleFormat
-					console.groupCollapsed "#{ini}RUN #{Math.round o.ms}ms: #{dir}%c | #{ind}%c | #{dat}",
-					...[...dirS, blackStyle, ...indS, blackStyle, ...datS]
-					console.log o.directChanges
-					console.log o.indirectChanges
-					console.log o.dataChanges
-					$ o.affected, map ({k, deps, isQ, query, runRes}) =>
+					[dir, dirS] = $ o.affected, filter((x) -> !!x.dir), map(({k, ...r}) -> [k, toStyle r]), consoleFormat
+					[ind, indS] = $ o.affected, filter((x) -> !!x.ind), map(({k, ...r}) -> [k, toStyle r]), consoleFormat
+					[dat, datS] = $ o.affected, filter((x) -> !!x.data), map(({k, ...r}) -> [k, toStyle r]), consoleFormat
+					sMs = "#{Math.round o.ms}ms (#{Math.round o.ms - o.msSubs}/#{Math.round o.msSubs})"
+					console.groupCollapsed "#{ini}RUN #{sMs}: #{dir}%c | #{ind}%c | #{dat}%c | #{o.subCalls.length}",
+					...[...dirS, blackStyle, ...indS, blackStyle, ...datS, blackStyle]
+					console.log '%c                (directly affected | indirectly affected | affected by data | number of subs called)', 'color: grey; font-style: italic;'
+					console.log 'direct changes:  ', o.directChanges
+					console.log 'indirect changes:', o.indirectChanges
+					console.log 'data changes:    ', o.dataChanges
+					console.log 'subs called:     ', o.subCalls
+					$ o.affected, map ({k, deps, isQ, isS, query, runRes, ms, ms2}) =>
+						sMs = "#{Math.round(ms)}#{ms2 && " (#{Math.round ms2})" || ''}ms"
 						if isQ
-							console.groupCollapsed "%c#{k}%c(#{sf0(depsWithData deps, @state).replace(/"([^"]+)":/g, '$1:')})",
+							console.groupCollapsed "%c#{k} %c#{sMs} %c(#{trunc(sf0(depsWithData deps, @state)).replace(/"([^"]+)":/g, '$1:')})",
 							queryStyle,
+							msStyle,
 							'color: #6D6D6D; font-weight: 400;'
 							console.log (config.queryToString || identity)(query)
 							console.log runRes
 							console.groupEnd()
 						else
-							console.groupCollapsed "%c#{k}%c(#{sf0(depsWithData deps, @state).replace(/"([^"]+)":/g, '$1:')})",
-							selectorStyle,
+							console.groupCollapsed "%c#{k} %c#{sMs} %c(#{trunc(sf0(depsWithData deps, @state)).replace(/"([^"]+)":/g, '$1:')})",
+							isS && selectorStyle || invokerStyle,
+							msStyle,
 							'color: #6D6D6D; font-weight: 400;'
 							console.log @state[k]
 							console.groupEnd()
@@ -61,7 +76,9 @@ export class App
 					console.log "RUN QUERIES #{Math.round o.ms}ms: #{o.ranQueries.join(',')}"
 				else throw new Error "NYI #{o.type}"
 				config.logCallback?(o, @)
-			raf: (f) -> window.requestAnimationFrame f
+			raf: (f) ->
+				rafId = window.requestAnimationFrame f
+				return () -> window.cancelAnimationFrame rafId
 			perf: () -> performance.now()
 			changeCallback: (state) ->
 		@config = merge defaultConfig, config
@@ -86,13 +103,19 @@ export class App
 	setUI: (delta) ->
 		@state = change.meta delta, @state, {}, @totalChanges
 
-	resetUI: (delta) ->
+	restart: (newState) =>
+		@stopCurrentRun()
+
 		# figure out the total delta needed for the reset
-		totalDelta = {...@config.initialUI, ...delta}
+		totalDelta = {...newState}
 		for k, v of @state
 			if !totalDelta[k] then totalDelta[k] = undefined
 
 		@setUI totalDelta
+		@queryRes = {}
+		@selectorRes = {}
+
+		@run true
 
 	get: (deps) -> $ @state, pickAll keys(deps)
 
@@ -104,49 +127,63 @@ export class App
 		return () => @subs.splice @subs.indexOf(sub), 1
 
 	_change: (k, v) => # private helper so we don't have to type this everywhere
+		ms0 = performance.now()
 		@state = change.meta {[k]: v}, @state, {}, @totalChanges
+		console.log 'change meta', performance.now() - ms0
+		ms1 = performance.now()
+		test1 = change {[k]: v}, @state
+		console.log 'change', performance.now() - ms1
 		@config.changeCallback? @state
 
 	runQuery: ({k, f, deps, rerun, thenError}) =>
+		ms0 = performance.now()
 		if !shouldRun deps, @state then return [null, Infinity]
+		console.log k
+		console.log 'ms1', performance.now() - ms0
 
 		query = f @state, {}
 		@queryRes[k] = query
+		q0 = performance.now()
 		runQueryRes = @config.runQuery {f, query, state: @state, key: k, rerun} # , meta = {isLocal, optimistic, etc..}
+		msQ = performance.now() - q0
 		if runQueryRes == Infinity
-			return [query, Infinity]
+			return [query, Infinity, msQ]
 		else if isThenable runQueryRes
 			if thenError then throw thenError
 			do (k) => # https://makandracards.com/makandra/38339-iifes-in-coffeescript
 				return [query, runQueryRes.then (queryRes_) =>
 					@dataChanges[k] = 1
 					@_change k, queryRes_
-				]
+				, msQ]
 		else
+			console.log 'ms2', performance.now() - ms0
 			@_change k, runQueryRes
-			return [query, runQueryRes]
+			console.log 'ms3', performance.now() - ms0
+			return [query, runQueryRes, msQ]
 
 	runSelector: ({k, f, deps}) =>
-		if !shouldRun deps, @state then return Infinity
+		if !shouldRun deps, @state then return [Infinity, 0]
 
+		t0 = @config.perf()
 		res = f @state
+		ms = @config.perf() - t0
 		resStr = JSON.stringify res
-		if res == Infinity then return Infinity
-		else if @selectorRes[k] == resStr then return Infinity
+		if res == Infinity then return [Infinity, ms]
+		else if @selectorRes[k] == resStr then return [Infinity, ms]
 		else
 			@_change k, res
 			@selectorRes[k] = resStr
-			return res
+			return [res, ms]
 
 	runInvoker: ({k, f, deps}) =>
 		if !shouldRun deps, @state then return Infinity
-		res = @config.runInvoker {f, key: k, state: @state, app: @}
+		@config.runInvoker {f, key: k, state: @state, app: @}
 
 	# TODO: HTTP 203 episode: kolla CPU och kanske optimera att raf när något ändrats bara
 	# The run loop - triggering selectors and queriers based on totalChanges since last run
 	run: (initial) =>
 		if !initial && isEmpty(@dataChanges) && isEmpty(@totalChanges)
-			@config.raf () => @run()
+			@stopCurrentRun = @config.raf () => @run()
 			return
 
 		t0 = @config.perf()
@@ -159,11 +196,13 @@ export class App
 			for {k, f, deps, isQ, isS, isI} in @qsi
 				if isEmpty deps
 					if isQ
-						[query, runRes] = @runQuery {k, f, deps}
-						if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, query, runRes, dir: 1}
+						t0Q = @config.perf()
+						[query, runRes, msQ1] = @runQuery {k, f, deps}
+						msQ2 = @config.perf() - t0Q
+						if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, query, runRes, dir: 1, ms: msQ1, ms2: msQ2}
 					else if isS
-						runRes = @runSelector {k, f, deps}
-						if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, runRes, dir: 1}
+						[runRes, msS] = @runSelector {k, f, deps}
+						if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, runRes, dir: 1, ms: msS}
 					else if isI
 						invokersToRun.push {k, f, deps}
 						affected.push {k, deps, isQ, isS, isI, runRes, dir: 1}
@@ -172,15 +211,18 @@ export class App
 		if !isEmpty @dataChanges
 			for {k, f, deps, isQ, isS, isI} in @qsi
 				if !isQ then continue
-				if isEmpty deps then continue
 
 				thenError = new Error "app2: query #{k} returned promise on rerun, that is not allowed"
-				[query, runRes] = @runQuery {k, f, deps, rerun: true, thenError}
-				if runRes != Infinity then affected.push {k, deps, isQ, query, runRes, data: 1}
+				t0Q = @config.perf()
+				[query, runRes, msQ1] = @runQuery {k, f, deps, rerun: true, thenError}
+				msQ2 = @config.perf() - t0Q
+				if runRes != Infinity then affected.push {k, deps, isQ, query, runRes, data: 1, ms: msQ1, ms2: msQ2}
 
 			@dataChanges = {}
 
+
 		directChanges = clone @totalChanges
+		subCalls = []
 		if !isEmpty @totalChanges
 			for {k, f, deps, isQ, isS, isI} in @qsi
 				if isEmpty deps then continue
@@ -188,36 +230,47 @@ export class App
 
 				if isAffected(deps, directChanges) then dir = 1; ind = null else ind = 1; dir = null
 				if isQ
-					[query, runRes] = @runQuery {k, f, deps}
-					if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, query, runRes, dir, ind}
+					t0Q = @config.perf()
+					[query, runRes, msQ1] = @runQuery {k, f, deps}
+					msQ2 = @config.perf() - t0Q
+					if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, query, runRes, dir, ind, ms: msQ1, ms2: msQ2}
 				else if isS
-					runRes = @runSelector {k, f, deps}
-					if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, runRes, dir, ind}
+					t0S = @config.perf()
+					[runRes, msS1] = @runSelector {k, f, deps}
+					msS2 = @config.perf() - t0S
+					if runRes != Infinity then affected.push {k, deps, isQ, isS, isI, runRes, dir, ind, ms: msS1, ms2: msS2}
 				else if isI
-					invokersToRun.push {k, f, deps}
-					affected.push {k, deps, isQ, isS, isI, runRes, dir, ind}
+					invokersToRun.push {k, f, deps, dir, ind}
+					# affected.push {k, deps, isQ, isS, isI, runRes, dir, ind}
 
 			indirectChanges = diff directChanges, @totalChanges
 
 			# NOTE: seems calling the cb can effect what is rendered and then also what subscriptions exists
 			#				so sub can actually be undefined within the loop because of timing so we need to check for nil
+			t0subs = @config.perf()
 			for sub in @subs
 				if !sub then continue
 				{deps, cb} = sub
 				if isAffected deps, @totalChanges
+					subCalls.push deps
 					cb @state
+			msSubs = @config.perf() - t0subs
 
 			@totalChanges = {}
 
-		if !isEmpty affected
-			ms = @config.perf() - t0
-			@config.log {type: 'run', initial, ms, affected, state: @state,
-			directChanges, indirectChanges, dataChanges: savedDataChanges}
+		# Note that invokers not included in ms since subs are already called (and rendering has been done?!)
+		ms = @config.perf() - t0
 			
-		for {k, f, deps} in invokersToRun
+		for {k, f, deps, dir, ind} in invokersToRun
+			t0i = @config.perf()
 			@runInvoker {k, f, deps}
+			msI = @config.perf() - t0i
+			affected.push {k, deps, isQ: false, isS: false, isI: true, runRes: undefined, dir, ind, ms: msI}
 
-		@config.raf () => @run()
+		@config.log {type: 'run', initial, ms, msSubs, affected, state: @state, subCalls,
+		directChanges, indirectChanges, dataChanges: savedDataChanges}
+
+		@stopCurrentRun = @config.raf () => @run()
 		return undefined
 
 
@@ -451,7 +504,7 @@ export reactBindings = (React) ->
 		deps = extractDeps f
 		# ensureDeps deps, app, (missing) ->
 		# 	new Error "app2: useApp with invalid keys: #{missing}. Spelling mistake or forgot declare in initialUI?"
-		initialData = app.get deps
+		initialData = app?.get deps
 		# console.log {initialData}
 		[state, setState] = React.useState initialData || {}
 		subscribe = React.useRef()

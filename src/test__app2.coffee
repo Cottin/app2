@@ -1,5 +1,5 @@
 clone = require('ramda/src/clone'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); head = require('ramda/src/head'); invoker = require('ramda/src/invoker'); keys = require('ramda/src/keys'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); pickAll = require('ramda/src/pickAll'); toPairs = require('ramda/src/toPairs'); without = require('ramda/src/without'); #auto_require: srcramda
-import {$, sf0} from "ramda-extras" #auto_require: esramda-extras
+import {$} from "ramda-extras" #auto_require: esramda-extras
 [] = [] #auto_sugar
 qq = (f) -> console.log match(/return (.*);/, f.toString())[1], f()
 qqq = (...args) -> console.log ...args
@@ -155,7 +155,7 @@ describe 'app2', () ->
 
 			res = fakeRunQuery query, {data}
 			resMemo = JSON.stringify res
-			console.log "runQuery #{key} #{sf0 query} #{sf0 res} rerun: #{rerun && 1 || 0} data: #{data && 1 || 0} prom: #{prom && 1 || 0} 
+			# console.log "runQuery #{key} #{sf0 query} #{sf0 res} rerun: #{rerun && 1 || 0} data: #{data && 1 || 0} prom: #{prom && 1 || 0} 
 			#{if queryMemo[key] == resMemo then 'Infinity' else ''}", res
 			if queryMemo[key] == resMemo
 				log.push ["#{rerun && 're-' || ''}runQuery - #{key}", Infinity]
@@ -174,7 +174,7 @@ describe 'app2', () ->
 			else res
 
 		runInvoker = (log, ref) -> ({f, state, key}) ->
-			console.log 'runInvoker' 
+			# console.log 'runInvoker' 
 			log.push ["runInvoker - #{key}"]
 			log.push ["setUI", {c: 1}]
 			ref.app.setUI {b: 1}
@@ -253,13 +253,14 @@ describe 'app2', () ->
 					["runQuery - q3", {x: 3}],
 					["log - RUN: s2,q3 |  | ", {a: 2, b: 3, c: 0, s1: 4, s2: 1, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 0}}],
 					["resolveQuery - q3", {x: 3}],
+					["re-runQuery - q0", Infinity],
 					["re-runQuery - q1", Infinity],
 					["re-runQuery - q2", {y: 5, v: 1}],
 					["re-runQuery - q3", Infinity],
 					["sub 2", {s3: 4}]
-					["log - RUN: s3 | s4,i1 | q2", {a: 2, b: 3, c: 0, s1: 4, s2: 1, s3: 4, s4: 5, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 1}, q3: {x: 3}}],
 					["runInvoker - i1"]
 					["setUI", {c: 1}],
+					["log - RUN: s3 | s4,i1 | q2", {a: 2, b: 1, c: 0, s1: 4, s2: 1, s3: 4, s4: 5, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 1}, q3: {x: 3}}],
 					["runQuery - q2", {y: 3, v: 1}],
 					["sub 1", {a: 2, b: 1, s1: 2}]
 					["log - RUN: s1 | q2 | ", {a: 2, b: 1, c: 0, s1: 2, s2: 1, s3: 4, s4: 5, q0: {x: 1}, q1: {x: 3}, q2: {y: 3, v: 1}, q3: {x: 3}}],
@@ -268,7 +269,7 @@ describe 'app2', () ->
 
 assertLog = (log, expected) ->
 	for line, i in log
-		fdeepEq line, expected[i] || ['Add another line'], "Line #{i} !" # hard to debug without the line
+		fdeepEq line, expected[i] || ['Add another line'], "Line #{i} !!!!" # hard to debug without the line
 
 	eq log.length, expected.length, 'expected is too long!'
 
