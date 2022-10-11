@@ -1,4 +1,4 @@
-all = require('ramda/src/all'); clone = require('ramda/src/clone'); difference = require('ramda/src/difference'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); identity = require('ramda/src/identity'); init = require('ramda/src/init'); invoker = require('ramda/src/invoker'); isEmpty = require('ramda/src/isEmpty'); isNil = require('ramda/src/isNil'); keys = require('ramda/src/keys'); length = require('ramda/src/length'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); nth = require('ramda/src/nth'); pickAll = require('ramda/src/pickAll'); prop = require('ramda/src/prop'); #auto_require: srcramda
+all = require('ramda/src/all'); difference = require('ramda/src/difference'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); identity = require('ramda/src/identity'); init = require('ramda/src/init'); invoker = require('ramda/src/invoker'); isEmpty = require('ramda/src/isEmpty'); isNil = require('ramda/src/isNil'); keys = require('ramda/src/keys'); length = require('ramda/src/length'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); nth = require('ramda/src/nth'); pickAll = require('ramda/src/pickAll'); prop = require('ramda/src/prop'); #auto_require: srcramda
 import {mapO, isAffected, diff, $, isThenable, sf0} from "ramda-extras" #auto_require: esramda-extras
 [] = [] #auto_sugar
 qq = (f) -> console.log match(/return (.*);/, f.toString())[1], f()
@@ -81,6 +81,8 @@ export class App
 				return () -> window.cancelAnimationFrame rafId
 			perf: () -> performance.now()
 			changeCallback: (state) ->
+			logCallback: null
+			runCallback: null
 		@config = merge defaultConfig, config
 		[resolved, resolvedKeys] = validateConfig @config
 		@qsi = resolved
@@ -224,7 +226,7 @@ export class App
 						invokersToRun.push {k, f, deps}
 						affected.push {k, deps, isQ, isS, isI, runRes, dir: 1}
 
-		savedDataChanges = clone @dataChanges
+		savedDataChanges = {...@dataChanges}
 		if !isEmpty @dataChanges
 			for {k, f, deps, isQ, isS, isI} in @qsi
 				if !isQ then continue
@@ -238,7 +240,7 @@ export class App
 			@dataChanges = {}
 
 
-		directChanges = clone @totalChanges
+		directChanges = {...@totalChanges}
 		subCalls = []
 		if !isEmpty @totalChanges
 			for {k, f, deps, isQ, isS, isI} in @qsi
@@ -284,6 +286,7 @@ export class App
 			msI = @config.perf() - t0i
 			affected.push {k, deps, isQ: false, isS: false, isI: true, runRes: undefined, dir, ind, ms: msI}
 
+		@config.runCallback?()
 		@config.log {type: 'run', initial, ms, msSubs, affected, state: @state, subCalls,
 		directChanges, indirectChanges, dataChanges: savedDataChanges}
 
