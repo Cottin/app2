@@ -1,5 +1,5 @@
-all = require('ramda/src/all'); clone = require('ramda/src/clone'); difference = require('ramda/src/difference'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); identity = require('ramda/src/identity'); init = require('ramda/src/init'); invoker = require('ramda/src/invoker'); isEmpty = require('ramda/src/isEmpty'); isNil = require('ramda/src/isNil'); keys = require('ramda/src/keys'); length = require('ramda/src/length'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); nth = require('ramda/src/nth'); pickAll = require('ramda/src/pickAll'); prop = require('ramda/src/prop'); test = require('ramda/src/test'); #auto_require: srcramda
-import {change, mapO, isAffected, diff, $, isThenable, sf0} from "ramda-extras" #auto_require: esramda-extras
+all = require('ramda/src/all'); clone = require('ramda/src/clone'); difference = require('ramda/src/difference'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); identity = require('ramda/src/identity'); init = require('ramda/src/init'); invoker = require('ramda/src/invoker'); isEmpty = require('ramda/src/isEmpty'); isNil = require('ramda/src/isNil'); keys = require('ramda/src/keys'); length = require('ramda/src/length'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); nth = require('ramda/src/nth'); pickAll = require('ramda/src/pickAll'); prop = require('ramda/src/prop'); #auto_require: srcramda
+import {mapO, isAffected, diff, $, isThenable, sf0} from "ramda-extras" #auto_require: esramda-extras
 [] = [] #auto_sugar
 qq = (f) -> console.log match(/return (.*);/, f.toString())[1], f()
 qqq = (...args) -> console.log ...args
@@ -86,6 +86,7 @@ export class App
 		@qsi = resolved
 		@allKeys = {...@config.initialUI, ...resolvedKeys}
 		@state = @config.initialUI
+		# @keyChanges = $ @state, map () -> true
 		@totalChanges = @state
 		# @hasDataChanges = false
 		@dataChanges = {}
@@ -101,7 +102,10 @@ export class App
 	start: -> @run true
 
 	setUI: (delta) ->
-		@state = change.meta delta, @state, {}, @totalChanges
+		# @state = change.meta delta, @state, {}, @totalChanges
+		# for k, v of delta
+			# @_set k, v
+		@_merge delta
 
 	restart: (newState) =>
 		@stopCurrentRun()
@@ -126,20 +130,33 @@ export class App
 		@subs.push sub
 		return () => @subs.splice @subs.indexOf(sub), 1
 
-	_change: (k, v) => # private helper so we don't have to type this everywhere
+	# _change: (k, v) => # private helper so we don't have to type this everywhere
+	# 	ms0 = performance.now()
+	# 	@state = change.meta {[k]: v}, @state, {}, @totalChanges
+	# 	# console.log 'change meta', performance.now() - ms0
+	# 	ms1 = performance.now()
+	# 	test1 = change {[k]: v}, @state
+	# 	# console.log 'change', performance.now() - ms1
+	# 	@config.changeCallback? @state
+
+	_set: (k, v) => @_merge {[k]: v}
+
+	_merge: (delta) => # private helper so we don't have to type this everywhere
 		ms0 = performance.now()
-		@state = change.meta {[k]: v}, @state, {}, @totalChanges
-		console.log 'change meta', performance.now() - ms0
+		# @state[k] = v
+		@state = {...@state, ...delta}
+		# @keyChanges = {...@keyChanges, ...map((->true), delta)}
+		@totalChanges = {...@totalChanges, ...delta}
+		# console.log 'change meta', performance.now() - ms0
 		ms1 = performance.now()
-		test1 = change {[k]: v}, @state
-		console.log 'change', performance.now() - ms1
+		# console.log 'change', performance.now() - ms1
 		@config.changeCallback? @state
 
 	runQuery: ({k, f, deps, rerun, thenError}) =>
 		ms0 = performance.now()
 		if !shouldRun deps, @state then return [null, Infinity]
-		console.log k
-		console.log 'ms1', performance.now() - ms0
+		# console.log k
+		# console.log 'ms1', performance.now() - ms0
 
 		query = f @state, {}
 		@queryRes[k] = query
@@ -153,12 +170,12 @@ export class App
 			do (k) => # https://makandracards.com/makandra/38339-iifes-in-coffeescript
 				return [query, runQueryRes.then (queryRes_) =>
 					@dataChanges[k] = 1
-					@_change k, queryRes_
+					@_set k, queryRes_
 				, msQ]
 		else
-			console.log 'ms2', performance.now() - ms0
-			@_change k, runQueryRes
-			console.log 'ms3', performance.now() - ms0
+			# console.log 'ms2', performance.now() - ms0
+			@_set k, runQueryRes
+			# console.log 'ms3', performance.now() - ms0
 			return [query, runQueryRes, msQ]
 
 	runSelector: ({k, f, deps}) =>
@@ -171,7 +188,7 @@ export class App
 		if res == Infinity then return [Infinity, ms]
 		else if @selectorRes[k] == resStr then return [Infinity, ms]
 		else
-			@_change k, res
+			@_set k, res
 			@selectorRes[k] = resStr
 			return [res, ms]
 
@@ -226,9 +243,9 @@ export class App
 		if !isEmpty @totalChanges
 			for {k, f, deps, isQ, isS, isI} in @qsi
 				if isEmpty deps then continue
-				else if !isAffected(deps, @totalChanges) then continue
+				else if !isAffected2(deps, @totalChanges) then continue
 
-				if isAffected(deps, directChanges) then dir = 1; ind = null else ind = 1; dir = null
+				if isAffected2(deps, directChanges) then dir = 1; ind = null else ind = 1; dir = null
 				if isQ
 					t0Q = @config.perf()
 					[query, runRes, msQ1] = @runQuery {k, f, deps}
@@ -251,7 +268,7 @@ export class App
 			for sub in @subs
 				if !sub then continue
 				{deps, cb} = sub
-				if isAffected deps, @totalChanges
+				if isAffected2 deps, @totalChanges
 					subCalls.push deps
 					cb @state
 			msSubs = @config.perf() - t0subs
@@ -481,6 +498,13 @@ export validateConfig = ({initialUI, queries, selectors, invokers}) ->
 ensureDeps = (deps, app, error) ->
 	missing = difference keys(deps), keys(app.allKeys)
 	if !isEmpty missing then throw error(missing)
+
+isAffected2 = (deps, total) ->
+	for k, v of deps
+		if ! has k, total then continue
+		else return true
+
+	return false
 
 export reactBindings = (React) ->
 
