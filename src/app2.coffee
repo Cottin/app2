@@ -1,9 +1,5 @@
-all = require('ramda/src/all'); difference = require('ramda/src/difference'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); identity = require('ramda/src/identity'); init = require('ramda/src/init'); invoker = require('ramda/src/invoker'); isEmpty = require('ramda/src/isEmpty'); isNil = require('ramda/src/isNil'); keys = require('ramda/src/keys'); length = require('ramda/src/length'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); nth = require('ramda/src/nth'); pickAll = require('ramda/src/pickAll'); prop = require('ramda/src/prop'); #auto_require: srcramda
+import all from "ramda/es/all"; import difference from "ramda/es/difference"; import filter from "ramda/es/filter"; import has from "ramda/es/has"; import identity from "ramda/es/identity"; import init from "ramda/es/init"; import invoker from "ramda/es/invoker"; import isEmpty from "ramda/es/isEmpty"; import isNil from "ramda/es/isNil"; import keys from "ramda/es/keys"; import length from "ramda/es/length"; import map from "ramda/es/map"; import mergeRight from "ramda/es/mergeRight"; import nth from "ramda/es/nth"; import pickAll from "ramda/es/pickAll"; import prop from "ramda/es/prop"; #auto_require: esramda
 import {mapO, isAffected, diff, $, isThenable, sf0} from "ramda-extras" #auto_require: esramda-extras
-[] = [] #auto_sugar
-qq = (f) -> console.log match(/return (.*);/, f.toString())[1], f()
-qqq = (...args) -> console.log ...args
-_ = (...xs) -> xs
 
 
 depsWithData = (deps, state) -> $ state, pickAll(keys(deps))
@@ -83,7 +79,7 @@ export class App
 			changeCallback: (state) ->
 			logCallback: null
 			runCallback: null
-		@config = merge defaultConfig, config
+		@config = {...defaultConfig, ...config}
 		[resolved, resolvedKeys] = validateConfig @config
 		@qsi = resolved
 		@allKeys = {...@config.initialUI, ...resolvedKeys}
@@ -336,7 +332,7 @@ export class Cache
 			resToId: (res) -> if res?.then then '[PROMISE]' else JSON.stringify res
 			queryToId: JSON.stringify
 			shouldRunRemote: (sub, res, state, remoteRun) -> if remoteRun?.then then remoteRun else !remoteRun
-		@config = merge defaultConfig, config
+		@config = mergeRight defaultConfig, config
 		@subs = {}
 		@subId = 0
 		@state = @config.initialState

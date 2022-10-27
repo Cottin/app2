@@ -1,53 +1,41 @@
 {
-  "name": "comon",
-  "version": "1.0.4",
-  "description": "Things that are not specific enough for its own repo but common across our projects",
-  "main": "index.js",
+  "name": "app2",
+  "version": "0.0.2",
+  "description": "A simple frontend architecture based on pub/sub",
+  "main": "app2.coffee",
   "type": "module",
   "scripts": {
-    "test": "mocha",
-    "link": "npm link popsiql shortstyle ramda-extras",
-    "unlink": "npm unlink popsiql shortstyle",
-    "clean": "rm -r node_modules"
+    "test": "npm-run-all clean-temp --parallel webpack-test jest trap",
+    "webpack-test": "webpack --watch",
+    "jest": "jest --watchAll",
+    "clean-temp": "rimraf ./temp",
+    "trap": "../hack/temp_trap"
   },
-  "directories": {
-    "client": "./client",
-    "server": "./server"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cottin/app2.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Victor Cottin <victor@wecodebetter.se> (http://www.wecodebetter.se/)",
+  "license": "MIT",
   "dependencies": {
-    "@babel/runtime": "^7.15.3",
-    "dayjs": "^1.10.6",
-    "fela": "^11.6.1",
-    "fela-preset-web": "^11.6.1",
-    "mocha": "^9.1.1",
-    "ramda": "^0.27.1",
-    "ramda-extras": "^0.4.20",
-    "react-fela": "^11.6.1"
-  },
-  "peerDependencies": {
-    "react": "17.0.2"
+    "ramda": "^0.28.0",
+    "ramda-extras": "^0.4.20"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.15.4",
     "@babel/register": "^7.15.3",
+    "@babel/runtime": "^7.15.3",
+    "coffee-loader": "^4.0.0",
     "coffeescript": "^2.5.1",
-    "testhelp": "^0.1.4"
+    "jest": "^29.2.1",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^3.0.2",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
   },
-  "mocha": {
-    "extension": [
-      "coffee"
-    ],
-    "spec": "./{,!(node_modules)/**}/test__*.coffee",
-    "require": "mocha-register.js",
-    "slow": "1",
-    "watch": true,
-    "watch-files": [
-      "./**/*.coffee"
-    ],
-    "watch-ignore": [
-      "node_modules"
+  "jest": {
+    "setupFilesAfterEnv": [
+      "./setupTests.js"
     ]
   }
 }

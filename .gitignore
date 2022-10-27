@@ -35,7 +35,3 @@ yarn-error.log*
 
 settings/*
 sym/*
-
-devQueries.js
-devState.js
-devWatch.js

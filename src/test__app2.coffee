@@ -1,40 +1,10 @@
-clone = require('ramda/src/clone'); filter = require('ramda/src/filter'); has = require('ramda/src/has'); head = require('ramda/src/head'); invoker = require('ramda/src/invoker'); keys = require('ramda/src/keys'); map = require('ramda/src/map'); match = require('ramda/src/match'); merge = require('ramda/src/merge'); pickAll = require('ramda/src/pickAll'); toPairs = require('ramda/src/toPairs'); without = require('ramda/src/without'); #auto_require: srcramda
+import clone from "ramda/es/clone"; import filter from "ramda/es/filter"; import has from "ramda/es/has"; import head from "ramda/es/head"; import invoker from "ramda/es/invoker"; import keys from "ramda/es/keys"; import map from "ramda/es/map"; import mergeRight from "ramda/es/mergeRight"; import pickAll from "ramda/es/pickAll"; import toPairs from "ramda/es/toPairs"; import without from "ramda/es/without"; #auto_require: esramda
 import {$} from "ramda-extras" #auto_require: esramda-extras
-[] = [] #auto_sugar
-qq = (f) -> console.log match(/return (.*);/, f.toString())[1], f()
-qqq = (...args) -> console.log ...args
-_ = (...xs) -> xs
 
-import assert from 'assert'
 import * as app2 from './app2'
 
-import {throws, throws_} from 'testhelp'
+import {deepEq, eq, throws} from 'comon/shared/testUtils'
 
-# TODO - flytta till testhelp
-deepEq = (a, b, c) ->
-	assert.deepStrictEqual(b, a, c)
-deepEq_ = (a, b, c) ->
-	console.log b
-	assert.deepStrictEqual(b, a, c)
-fdeepEq = (a, b, c) ->
-	assert.deepStrictEqual(a, b, c)
-fdeepEq_ = (a, b, c) ->
-	console.log a
-	assert.deepStrictEqual(a, b, c)
-eq = (a, b, c) ->
-	assert.strictEqual(b, a, c)
-eq_ = (a, b, c) ->
-	console.log b
-	assert.strictEqual(b, a, c)
-feq = (a, b, c) ->
-	assert.strictEqual(a, b, c)
-feq_ = (a, b, c) ->
-	console.log a
-	assert.strictEqual(a, b, c)
-
-
-# TODO: Få mocha att funka med esramda så man slipper srcramda och dra in hela lib !
-# TODO: fel verkar vara på transpilerad kod, ie. test__app2.coffee:499
 
 describe 'app2', () ->
 	describe 'extractDeps', () ->
@@ -191,19 +161,20 @@ describe 'app2', () ->
 				log.push ["log - RUN QUERIES: #{o.ranQueries}"]
 			else throw new Error 'NYI'
 		fakeRaf = (log) -> (runs, cb, uiChanges, ref) ->
-			count = 0
+			counter = 0
 			(f) ->
-				qqq "----------- RUN #{count} ------------"
-				if count == runs then return cb()
-				if uiChanges[count]
-					log.push ["setUI", uiChanges[count]]
-					ref.app.setUI uiChanges[count]
+				console.log "----------- RUN #{counter} ------------"
+				if counter == runs then return cb()
+				if uiChanges[counter]
+					log.push ["setUI", uiChanges[counter]]
+					ref.app.setUI uiChanges[counter]
 				setTimeout f, 10
-				count++
+				counter++
 		perf = () -> Math.floor process.uptime() * 1000
 		setupMock = (log, runs, uiChanges, ref) ->
 			raf = null
 			done = new Promise (res) -> raf = fakeRaf(log) runs, res, uiChanges, ref
+			done.catch (err) -> console.error err
 			mock = {initialUI, runQuery: runQuery(log), log: logger(log), raf, perf, runInvoker: runInvoker(log, ref)}
 			return [done, mock]
 
@@ -215,7 +186,7 @@ describe 'app2', () ->
 		it '1', () ->
 			log = []
 			[done, mock] = setupMock(log, 7, {1: {a: 2}, 2: {b: 3}, 3: {c: 0}}, ref)
-			config = merge mock,
+			config = mergeRight mock,
 				queries:
 					q0: () -> {o: 1}
 					q1: ({a}) -> {o: a+1}
@@ -234,42 +205,43 @@ describe 'app2', () ->
 			fakeSub log, app, 1, {a: 1, b: 1, s1: 1}
 			fakeSub log, app, 2, {s3: 1}
 			app.start()
-			done.then () ->
-				assertLog log, [
-					["runQuery - q0", {x: 1}],
-					["runQuery - q1", {x: 2}],
-					["runQuery - q2", {y: 4, v: 0}],
-					["sub 1", {a: 1, b: 2, s1: 3}]
-					["log - RUN: q0,q1,s1 | q2 | ", {a: 1, b: 2, c: null, s1: 3, q0: {x: 1}, q1: {x: 2}, q2: {y: 4, v: 0}}],
-					["setUI", {a: 2}],
-					["runQuery - q1", {x: 3}],
-					["sub 1", {a: 2, b: 2, s1: 3}]
-					["log - RUN: q1 |  | ", {a: 2, b: 2, c: null, s1: 3, q0: {x: 1}, q1: {x: 3}, q2: {y: 4, v: 0}}],
-					["setUI", {b: 3}],
-					["runQuery - q2", {y: 5, v: 0}],
-					["sub 1", {a: 2, b: 3, s1: 4}]
-					["log - RUN: s1 | q2 | ", {a: 2, b: 3, c: null, s1: 4, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 0}}],
-					["setUI", {c: 0}],
-					["runQuery - q3", {x: 3}],
-					["log - RUN: s2,q3 |  | ", {a: 2, b: 3, c: 0, s1: 4, s2: 1, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 0}}],
-					["resolveQuery - q3", {x: 3}],
-					["re-runQuery - q0", Infinity],
-					["re-runQuery - q1", Infinity],
-					["re-runQuery - q2", {y: 5, v: 1}],
-					["re-runQuery - q3", Infinity],
-					["sub 2", {s3: 4}]
-					["runInvoker - i1"]
-					["setUI", {c: 1}],
-					["log - RUN: s3 | s4,i1 | q2", {a: 2, b: 1, c: 0, s1: 4, s2: 1, s3: 4, s4: 5, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 1}, q3: {x: 3}}],
-					["runQuery - q2", {y: 3, v: 1}],
-					["sub 1", {a: 2, b: 1, s1: 2}]
-					["log - RUN: s1 | q2 | ", {a: 2, b: 1, c: 0, s1: 2, s2: 1, s3: 4, s4: 5, q0: {x: 1}, q1: {x: 3}, q2: {y: 3, v: 1}, q3: {x: 3}}],
-				]
+			await done
+
+			assertLog log, [
+				["runQuery - q0", {x: 1}],
+				["runQuery - q1", {x: 2}],
+				["runQuery - q2", {y: 4, v: 0}],
+				["sub 1", {a: 1, b: 2, s1: 3}]
+				["log - RUN: q0,q1,s1 | q2 | ", {a: 1, b: 2, c: null, s1: 3, q0: {x: 1}, q1: {x: 2}, q2: {y: 4, v: 0}}],
+				["setUI", {a: 2}],
+				["runQuery - q1", {x: 3}],
+				["sub 1", {a: 2, b: 2, s1: 3}]
+				["log - RUN: q1 |  | ", {a: 2, b: 2, c: null, s1: 3, q0: {x: 1}, q1: {x: 3}, q2: {y: 4, v: 0}}],
+				["setUI", {b: 3}],
+				["runQuery - q2", {y: 5, v: 0}],
+				["sub 1", {a: 2, b: 3, s1: 4}]
+				["log - RUN: s1 | q2 | ", {a: 2, b: 3, c: null, s1: 4, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 0}}],
+				["setUI", {c: 0}],
+				["runQuery - q3", {x: 3}],
+				["log - RUN: s2,q3 |  | ", {a: 2, b: 3, c: 0, s1: 4, s2: 1, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 0}}],
+				["resolveQuery - q3", {x: 3}],
+				["re-runQuery - q0", Infinity],
+				["re-runQuery - q1", Infinity],
+				["re-runQuery - q2", {y: 5, v: 1}],
+				["re-runQuery - q3", Infinity],
+				["sub 2", {s3: 4}]
+				["runInvoker - i1"]
+				["setUI", {c: 1}],
+				["log - RUN: s3 | s4,i1 | q2", {a: 2, b: 1, c: 0, s1: 4, s2: 1, s3: 4, s4: 5, q0: {x: 1}, q1: {x: 3}, q2: {y: 5, v: 1}, q3: {x: 3}}],
+				["runQuery - q2", {y: 3, v: 1}],
+				["sub 1", {a: 2, b: 1, s1: 2}]
+				["log - RUN: s1 | q2 | ", {a: 2, b: 1, c: 0, s1: 2, s2: 1, s3: 4, s4: 5, q0: {x: 1}, q1: {x: 3}, q2: {y: 3, v: 1}, q3: {x: 3}}],
+			]
 
 
 assertLog = (log, expected) ->
 	for line, i in log
-		fdeepEq line, expected[i] || ['Add another line'], "Line #{i} !!!!" # hard to debug without the line
+		deepEq expected[i] || ['Add another line'], line, "Line #{i} !!!!" # hard to debug without the line
 
 	eq log.length, expected.length, 'expected is too long!'
 
