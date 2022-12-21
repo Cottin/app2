@@ -36,6 +36,7 @@ export class App
 			selectors: {}
 			runQuery: () -> throw new Error 'app2: must supply runQuery funciton in config'
 			runInvoker: () -> throw new Error 'app2: must supply runInvoker funciton in config'
+			runSelector: ({f, state, k, app}) -> f state
 			log: (o) =>
 				if o.type == 'run'
 					ini = if o.initial then 'INITIAL-' else ''
@@ -180,7 +181,7 @@ export class App
 		if !shouldRun deps, @state then return [Infinity, 0]
 
 		t0 = @config.perf()
-		res = f @state
+		res = @config.runSelector {f, state: @state, k, app: @}
 		ms = @config.perf() - t0
 		resStr = JSON.stringify res
 		if res == Infinity then return [Infinity, ms]
