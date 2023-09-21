@@ -30,14 +30,19 @@ export createInitializeApp = ({data, selectors, onUrlChange, onUrlChangeComplete
       onUrlChange? delta, app
       lastUrl = next
       app.set delta
+      # WORKAROUND: routeChangeComplete is not always firing, but too hard to reproduce to report...
+      setTimeout (-> onUrlChangeComplete? app.state), 0
     Router.router.events.on 'routeChangeStart', handleRouteChange
-
-    handleRouteChangeComplete = (newUrl) ->
-      console.log 'handleRouteChangeComplete'
-      onUrlChangeComplete? app.state
-
-    Router.router.events.on 'routeChangeComplete', handleRouteChangeComplete
     onUrlChangeComplete? app.state # call once after initiation
+
+    # WORKAROUND: ...this is how the correct way would look like if it was working stabilly
+    #             To reproduce: to go /time, click > and < in timeline, click circle, click > and < in report
+    #                           click circle and watch routeChangeStart fire but not routeChangeComplete.
+    #                           Also verified bug in production.
+    # handleRouteChangeComplete = (newUrl) ->
+    #   console.log 'handleRouteChangeComplete', newUrl
+    #   onUrlChangeComplete? app.state
+    # Router.router.events.on 'routeChangeComplete', handleRouteChangeComplete
 
 export useApp = (f) -> app.use f
 export setApp = (spec) -> app.set spec
