@@ -14,6 +14,7 @@ AppContext = createContext()
 export AppProvider = ({app, children}) ->
 	React.createElement AppContext.Provider, {value: app}, children
 
+if !performance then performance = {now: () -> Date.now()} # Trying to make it work in node v12
 
 export createApp = ({data: initialData, select, onSelected}) ->
 	data = initialData
