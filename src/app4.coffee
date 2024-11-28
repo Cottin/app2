@@ -5,11 +5,13 @@ import React, {useSyncExternalStore, createContext, useContext} from 'react'
 import {useSyncExternalStoreWithSelector} from 'use-sync-external-store/shim/with-selector'
 
 isClientSide = typeof window != 'undefined'
+isProd = process.env.NODE_ENV == 'production'
 
 selectorStyle = 'color: #17a02d; font-weight: 600;'
 normalStyle = 'color: #6D6D6D; font-weight: 400;'
 
 AppContext = createContext()
+
 
 export AppProvider = ({app, children}) ->
 	React.createElement AppContext.Provider, {value: app}, children
@@ -62,14 +64,21 @@ export createApp = ({data: initialData, select, onSelected}) ->
 
 log = (text, totMs, selectorsMs, logRes, pre, post) ->
 	selText = $ selectorsMs, _map(({k}) -> k), _join ', '
-	console.groupCollapsed "#{text} #{Math.round totMs}ms: %c#{selText}", selectorStyle
+
+	groupEndOrVoid = if isProd then (->) else console.groupEnd
+	logForResOrVoid = if isProd then (->) else console.log
+
+	if isProd then console.log "#{text} #{Math.round totMs}ms: #{selText}"
+	else console.groupCollapsed "#{text} #{Math.round totMs}ms: %c#{selText}", selectorStyle
+	
 	if pre then console.log pre
 	for sel in selectorsMs
-		console.groupCollapsed "%c#{sel.k} %c#{Math.round sel.ms}ms", selectorStyle, normalStyle
-		if logRes then console.log sel.res
-		console.groupEnd()
+		if isProd then console.log "#{sel.k} #{Math.round sel.ms}ms"
+		else console.groupCollapsed "%c#{sel.k} %c#{Math.round sel.ms}ms", selectorStyle, normalStyle
+		if logRes then logForResOrVoid sel.res
+		groupEndOrVoid()
 	if post then console.log post
-	console.groupEnd()
+	groupEndOrVoid()
 
 makeAppSelector = (deps) ->
 	if _type(deps[0]) == 'Function' then deps[0]
